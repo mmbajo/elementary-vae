@@ -1,8 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+from typing import Optional, Union, Tuple
+import matplotlib.figure
 
-def plot_reconstruction(original, reconstruction, n=8):
+def plot_reconstruction(
+    original: torch.Tensor, 
+    reconstruction: torch.Tensor, 
+    n: int = 8
+) -> matplotlib.figure.Figure:
     """
     Plot original and reconstructed images side by side.
     
@@ -29,7 +35,12 @@ def plot_reconstruction(original, reconstruction, n=8):
     plt.tight_layout()
     return plt.gcf()
 
-def plot_latent_space(model, dataloader, device, n_samples=1000):
+def plot_latent_space(
+    model: torch.nn.Module, 
+    dataloader: torch.utils.data.DataLoader, 
+    device: torch.device, 
+    n_samples: int = 1000
+) -> matplotlib.figure.Figure:
     """
     Plot the latent space of a VAE model.
     
@@ -41,8 +52,8 @@ def plot_latent_space(model, dataloader, device, n_samples=1000):
     """
     model.eval()
     
-    all_latents = []
-    all_labels = []
+    all_latents: list = []
+    all_labels: list = []
     
     with torch.no_grad():
         for batch_idx, (data, labels) in enumerate(dataloader):
@@ -65,20 +76,20 @@ def plot_latent_space(model, dataloader, device, n_samples=1000):
                 break
                 
     # Concatenate all latents and labels
-    all_latents = torch.cat(all_latents, dim=0)[:n_samples]
-    all_labels = torch.cat(all_labels, dim=0)[:n_samples]
+    all_latents_tensor = torch.cat(all_latents, dim=0)[:n_samples]
+    all_labels_tensor = torch.cat(all_labels, dim=0)[:n_samples]
     
     # If latent dim > 2, use PCA to reduce to 2D
-    if all_latents.size(1) > 2:
+    if all_latents_tensor.size(1) > 2:
         from sklearn.decomposition import PCA
         pca = PCA(n_components=2)
-        latent_2d = pca.fit_transform(all_latents.numpy())
+        latent_2d = pca.fit_transform(all_latents_tensor.numpy())
     else:
-        latent_2d = all_latents.numpy()[:, :2]
+        latent_2d = all_latents_tensor.numpy()[:, :2]
     
     # Plot points in 2D space
     plt.figure(figsize=(10, 8))
-    scatter = plt.scatter(latent_2d[:, 0], latent_2d[:, 1], c=all_labels, cmap='tab10', alpha=0.6)
+    scatter = plt.scatter(latent_2d[:, 0], latent_2d[:, 1], c=all_labels_tensor, cmap='tab10', alpha=0.6)
     plt.colorbar(scatter, label='Digit class')
     plt.xlabel('Latent Dimension 1')
     plt.ylabel('Latent Dimension 2')

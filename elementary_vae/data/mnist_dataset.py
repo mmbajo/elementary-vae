@@ -2,8 +2,14 @@ import os
 import torch
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
+from typing import Tuple, Union, Optional, List
 
-def load_mnist(batch_size=128, data_dir="./data", val_split=0.1, num_workers=4):
+def load_mnist(
+    batch_size: int = 128, 
+    data_dir: str = "./data", 
+    val_split: float = 0.1, 
+    num_workers: int = 4
+) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """
     Load the MNIST dataset with automatic download if necessary.
     

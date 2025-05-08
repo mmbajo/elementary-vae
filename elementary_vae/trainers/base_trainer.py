@@ -1,15 +1,16 @@
 import os
 import torch
 from tqdm import tqdm
+from typing import Tuple, List, Dict, Any, Optional, Union
 
 class BaseTrainer:
     def __init__(
         self,
-        model,
-        optimizer,
-        device,
-        checkpoint_dir="./checkpoints"
-    ):
+        model: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
+        device: torch.device,
+        checkpoint_dir: str = "./checkpoints"
+    ) -> None:
         self.model = model
         self.optimizer = optimizer
         self.device = device
@@ -17,19 +18,25 @@ class BaseTrainer:
         
         os.makedirs(checkpoint_dir, exist_ok=True)
         
-    def train_epoch(self, train_loader):
+    def train_epoch(self, train_loader: torch.utils.data.DataLoader) -> float:
         """Abstract method to train for one epoch"""
         raise NotImplementedError
     
-    def validate(self, val_loader):
+    def validate(self, val_loader: torch.utils.data.DataLoader) -> float:
         """Abstract method to validate the model"""
         raise NotImplementedError
     
-    def train(self, train_loader, val_loader, num_epochs, save_interval=5):
+    def train(
+        self, 
+        train_loader: torch.utils.data.DataLoader, 
+        val_loader: torch.utils.data.DataLoader, 
+        num_epochs: int,
+        save_interval: int = 5
+    ) -> Tuple[List[float], List[float]]:
         """Train the model for the specified number of epochs"""
         best_val_loss = float('inf')
-        train_losses = []
-        val_losses = []
+        train_losses: List[float] = []
+        val_losses: List[float] = []
         
         for epoch in range(num_epochs):
             train_loss = self.train_epoch(train_loader)
@@ -51,7 +58,7 @@ class BaseTrainer:
         self.save_checkpoint("final_model.pt")
         return train_losses, val_losses
     
-    def save_checkpoint(self, filename):
+    def save_checkpoint(self, filename: str) -> None:
         """Save model checkpoint"""
         checkpoint = {
             'model_state_dict': self.model.state_dict(),
@@ -59,7 +66,7 @@ class BaseTrainer:
         }
         torch.save(checkpoint, os.path.join(self.checkpoint_dir, filename))
         
-    def load_checkpoint(self, filename):
+    def load_checkpoint(self, filename: str) -> None:
         """Load model checkpoint"""
         checkpoint_path = os.path.join(self.checkpoint_dir, filename)
         if os.path.exists(checkpoint_path):
@@ -70,7 +77,11 @@ class BaseTrainer:
         else:
             print(f"Checkpoint not found at {checkpoint_path}")
     
-    def get_reconstructions(self, dataloader, num_samples=8):
+    def get_reconstructions(
+        self, 
+        dataloader: torch.utils.data.DataLoader, 
+        num_samples: int = 8
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Generate reconstructions for a batch of inputs"""
         self.model.eval()
         with torch.no_grad():

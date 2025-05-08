@@ -3,13 +3,14 @@ import torch
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import argparse
+from typing import List, Tuple, Dict, Any, Optional
 
 from elementary_vae.data import load_mnist
 from elementary_vae.models import Autoencoder
 from elementary_vae.trainers import AutoencoderTrainer
 from elementary_vae.utils import plot_reconstruction, plot_latent_space
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train an autoencoder on MNIST")
     parser.add_argument("--batch-size", type=int, default=128, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=20, help="Number of epochs to train")
@@ -20,7 +21,7 @@ def parse_args():
     
     return parser.parse_args()
 
-def main():
+def main() -> None:
     args = parse_args()
     
     # Create directories
@@ -39,7 +40,7 @@ def main():
     print("Data loaded")
     
     # Parse hidden dimensions
-    hidden_dims = [int(dim) for dim in args.hidden_dims.split(",")]
+    hidden_dims: List[int] = [int(dim) for dim in args.hidden_dims.split(",")]
     
     # Create model
     model = Autoencoder(

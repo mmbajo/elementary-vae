@@ -2,24 +2,25 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 from .base_trainer import BaseTrainer
+from typing import Optional
 
 class VAETrainer(BaseTrainer):
     def __init__(
         self,
-        model,
-        optimizer,
-        device,
-        checkpoint_dir="./checkpoints",
-        kl_weight=1.0
-    ):
+        model: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
+        device: torch.device,
+        checkpoint_dir: str = "./checkpoints",
+        kl_weight: float = 1.0
+    ) -> None:
         super().__init__(model, optimizer, device, checkpoint_dir)
-        self.kl_weight = kl_weight
+        self.kl_weight: float = kl_weight
         
-    def train_epoch(self, train_loader):
+    def train_epoch(self, train_loader: torch.utils.data.DataLoader) -> float:
         self.model.train()
-        total_loss = 0
-        total_recon_loss = 0
-        total_kl_loss = 0
+        total_loss: float = 0.0
+        total_recon_loss: float = 0.0
+        total_kl_loss: float = 0.0
         
         for data, _ in tqdm(train_loader, desc="Training", leave=False):
             data = data.to(self.device)
@@ -55,11 +56,11 @@ class VAETrainer(BaseTrainer):
         
         return avg_loss
     
-    def validate(self, val_loader):
+    def validate(self, val_loader: torch.utils.data.DataLoader) -> float:
         self.model.eval()
-        total_loss = 0
-        total_recon_loss = 0
-        total_kl_loss = 0
+        total_loss: float = 0.0
+        total_recon_loss: float = 0.0
+        total_kl_loss: float = 0.0
         
         with torch.no_grad():
             for data, _ in tqdm(val_loader, desc="Validating", leave=False):

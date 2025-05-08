@@ -3,13 +3,14 @@ import torch
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import argparse
+from typing import List, Tuple, Dict, Any, Optional
 
 from elementary_vae.data import load_mnist
 from elementary_vae.models import VAE
 from elementary_vae.trainers import VAETrainer
 from elementary_vae.utils import plot_reconstruction, plot_latent_space
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train a VAE on MNIST")
     parser.add_argument("--batch-size", type=int, default=128, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=20, help="Number of epochs to train")
@@ -21,7 +22,7 @@ def parse_args():
     
     return parser.parse_args()
 
-def main():
+def main() -> None:
     args = parse_args()
     
     # Create directories
@@ -40,7 +41,7 @@ def main():
     print("Data loaded")
     
     # Parse hidden dimensions
-    hidden_dims = [int(dim) for dim in args.hidden_dims.split(",")]
+    hidden_dims: List[int] = [int(dim) for dim in args.hidden_dims.split(",")]
     
     # Create model
     model = VAE(
@@ -90,7 +91,7 @@ def main():
     fig.savefig(os.path.join(args.save_dir, "latent_space.png"))
     
     # Generate samples from random points in latent space
-    n_samples = 10
+    n_samples: int = 10
     with torch.no_grad():
         z = torch.randn(n_samples, args.latent_dim).to(device)
         samples = model.decode(z)
