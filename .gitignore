@@ -41,6 +41,7 @@ ENV/
 *.ckpt
 
 # Project specific
+data/
 results/
 checkpoints/
 runs/
