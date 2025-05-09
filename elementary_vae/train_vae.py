@@ -43,13 +43,19 @@ def main() -> None:
     # Parse hidden dimensions
     hidden_dims: List[int] = [int(dim) for dim in args.hidden_dims.split(",")]
     
+    # Get image dimensions from the dataset
+    sample_batch, _ = next(iter(train_loader))
+    image_shape = tuple(sample_batch.shape[1:])  # (channels, height, width)
+    input_dim = sample_batch[0].numel()  # total number of elements in a single image
+    
     # Create model
     model = VAE(
-        input_dim=28*28,  # MNIST image size
+        input_dim=input_dim,  # calculated from image dimensions
         hidden_dims=hidden_dims,
-        latent_dim=args.latent_dim
+        latent_dim=args.latent_dim,
+        image_shape=image_shape
     ).to(device)
-    print(f"Created VAE with architecture: {hidden_dims}, latent_dim={args.latent_dim}")
+    print(f"Created VAE with architecture: {hidden_dims}, latent_dim={args.latent_dim}, input_dim={input_dim}, image_shape={image_shape}")
     
     # Create optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
@@ -86,9 +92,12 @@ def main() -> None:
     fig = plot_reconstruction(inputs, reconstructions)
     fig.savefig(os.path.join(args.save_dir, "reconstructions.png"))
     
-    # Plot latent space
-    fig = plot_latent_space(model, test_loader, device)
-    fig.savefig(os.path.join(args.save_dir, "latent_space.png"))
+    # Plot latent space (only for 2D latent space)
+    if args.latent_dim == 2:
+        fig = plot_latent_space(model, test_loader, device)
+        fig.savefig(os.path.join(args.save_dir, "latent_space.png"))
+    else:
+        print(f"Latent space visualization only available for 2D latent space (current: {args.latent_dim}D)")
     
     # Generate samples from random points in latent space
     n_samples: int = 10

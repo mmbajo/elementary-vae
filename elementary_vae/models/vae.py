@@ -7,86 +7,97 @@ class VAEEncoder(nn.Module):
     def __init__(self, input_dim: int = 784, hidden_dims: List[int] = [512, 256], latent_dim: int = 32) -> None:
         super().__init__()
         
-        # TODO: Implement the VAE encoder layers here
-        # Unlike a regular autoencoder, a VAE encoder outputs
-        # both a mean (mu) and log variance (logvar) for each
-        # latent dimension
-        self.fc1 = nn.Linear(input_dim, hidden_dims[0])
-        self.fc2 = nn.Linear(hidden_dims[0], hidden_dims[1])
-        self.fc3 = nn.Linear(hidden_dims[1], latent_dim)
-        self.fc4 = nn.Linear(hidden_dims[1], latent_dim)
+        # Create a dynamic list of layers based on hidden_dims
+        self.hidden_layers = nn.ModuleList()
+        input_size = input_dim
+        
+        # Add all hidden layers
+        for hidden_size in hidden_dims:
+            self.hidden_layers.append(nn.Linear(input_size, hidden_size))
+            input_size = hidden_size
+            
+        # Output layers for mu and logvar
+        self.mu_layer = nn.Linear(input_size, latent_dim)
+        self.logvar_layer = nn.Linear(input_size, latent_dim)
         self.relu = nn.ReLU()
         
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        # TODO: Implement the forward pass
-        # Remember to flatten the input image first
-        # Return both mu and logvar for the latent space
+        # Flatten the input
         x = x.view(x.size(0), -1)
-        o = self.relu(self.fc1(x))
-        o = self.relu(self.fc2(o))
-        mu = self.fc3(o)
-        logvar = self.fc4(o)
+        
+        # Pass through hidden layers
+        for layer in self.hidden_layers:
+            x = self.relu(layer(x))
+            
+        # Get mu and logvar
+        mu = self.mu_layer(x)
+        logvar = self.logvar_layer(x)
+        
         return mu, logvar
 
 class VAEDecoder(nn.Module):
-    def __init__(self, latent_dim: int = 32, hidden_dims: List[int] = [256, 512], output_dim: int = 784) -> None:
+    def __init__(self, latent_dim: int = 32, hidden_dims: List[int] = [256, 512], output_dim: int = 784, image_shape: Tuple[int, int, int] = (1, 28, 28)) -> None:
         super().__init__()
         
-        # TODO: Implement the VAE decoder layers here
-        # The decoder takes a sampled latent vector and
-        # reconstructs the original input
-        self.fc1 = nn.Linear(latent_dim, hidden_dims[1])
-        self.fc2 = nn.Linear(hidden_dims[1], hidden_dims[0])
-        self.fc3 = nn.Linear(hidden_dims[0], output_dim)
+        # Create a dynamic list of layers based on hidden_dims
+        self.hidden_layers = nn.ModuleList()
+        input_size = latent_dim
+        
+        # Add all hidden layers
+        for hidden_size in hidden_dims:
+            self.hidden_layers.append(nn.Linear(input_size, hidden_size))
+            input_size = hidden_size
+            
+        # Output layer
+        self.output_layer = nn.Linear(input_size, output_dim)
         self.relu = nn.ReLU()
         
+        # Store output dimensions for reshaping
+        self.output_dim = output_dim
+        self.image_shape = image_shape
+        
     def forward(self, z: torch.Tensor) -> torch.Tensor:
-        # TODO: Implement the forward pass
-        # Remember to reshape the output to match the original image dimensions
-        o = self.relu(self.fc1(z))
-        o = self.relu(self.fc2(o))
-        o = torch.sigmoid(self.fc3(o))
-        return o.view(-1, 1, 28, 28) # hardcoded for MNIST
+        # Pass through hidden layers
+        x = z
+        for layer in self.hidden_layers:
+            x = self.relu(layer(x))
+            
+        # Output layer with sigmoid activation
+        output = torch.sigmoid(self.output_layer(x))
+        
+        # Reshape to match original image dimensions
+        return output.view(output.size(0), *self.image_shape)
 
 class VAE(nn.Module):
-    def __init__(self, input_dim: int = 784, hidden_dims: List[int] = [512, 256], latent_dim: int = 32) -> None:
+    def __init__(self, input_dim: int = 784, hidden_dims: List[int] = [512, 256], latent_dim: int = 32, image_shape: Tuple[int, int, int] = (1, 28, 28)) -> None:
         super().__init__()
         
-        # TODO: Create the encoder and decoder components
+        # Create encoder and decoder with reversed hidden dims for decoder
         rev_hidden_dims = hidden_dims[::-1]
-        self.encoder: Optional[VAEEncoder] = VAEEncoder(input_dim, hidden_dims, latent_dim)  # Replace with your VAE encoder
-        self.decoder: Optional[VAEDecoder] = VAEDecoder(latent_dim, rev_hidden_dims, input_dim)  # Replace with your decoder
+        self.encoder: Optional[VAEEncoder] = VAEEncoder(input_dim, hidden_dims, latent_dim)
+        self.decoder: Optional[VAEDecoder] = VAEDecoder(latent_dim, rev_hidden_dims, input_dim, image_shape)
         self.latent_dim: int = latent_dim
         
     def reparameterize(self, mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
-        # TODO: Implement the reparameterization trick
-        # This samples from a distribution defined by mu and logvar
-        # while allowing gradients to flow back
+        # Implement the reparameterization trick
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std) # sample from standard normal
-        return mu + eps * std  # Replace with the sampled latent vector
+        return mu + eps * std
         
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        # TODO: Implement the full VAE forward pass
-        # 1. Encode the input to get mu, logvar
-        # 2. Sample from the distribution using reparameterize
-        # 3. Decode the sampled latent vector
         mu, logvar = self.encoder(x)
         z = self.reparameterize(mu, logvar)
         x_reconstructed = self.decoder(z)
         return x_reconstructed, mu, logvar
     
     def encode(self, x: torch.Tensor) -> torch.Tensor:
-        # TODO: Implement encoding and sampling
         mu, logvar = self.encoder(x)
         z = self.reparameterize(mu, logvar)
         return z
     
     def decode(self, z: torch.Tensor) -> torch.Tensor:
-        # TODO: Implement decoding only
         return self.decoder(z)
     
     def sample(self, num_samples: int, device: torch.device) -> torch.Tensor:
-        # TODO: Generate samples from random points in the latent space
         z = torch.randn(num_samples, self.latent_dim).to(device)
-        return self.decoder(z)  # Replace with your samples 
+        return self.decoder(z) 

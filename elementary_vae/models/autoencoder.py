@@ -7,63 +7,76 @@ class Encoder(nn.Module):
     def __init__(self, input_dim: int = 784, hidden_dims: List[int] = [512, 256], latent_dim: int = 32) -> None:
         super().__init__()
         
-        # TODO: Implement the encoder layers here
-        # You should create layers to process input data
-        # and project it to the latent space
-        self.fc1 = nn.Linear(input_dim, hidden_dims[0])
-        self.fc2 = nn.Linear(hidden_dims[0], hidden_dims[1])
-        self.fc3 = nn.Linear(hidden_dims[1], latent_dim)
+        # Create a dynamic list of layers based on hidden_dims
+        layers = []
+        input_size = input_dim
+        
+        # Add all hidden layers
+        for hidden_size in hidden_dims:
+            layers.append(nn.Linear(input_size, hidden_size))
+            layers.append(nn.ReLU())
+            input_size = hidden_size
+            
+        # Add final layer to latent space
+        layers.append(nn.Linear(input_size, latent_dim))
+        
+        # Create sequential model with all layers
+        self.encoder_net = nn.Sequential(*layers)
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # TODO: Implement the forward pass
-        # Remember to flatten the input image first
-        o = x.view(x.size(0), -1)
-        o = F.relu(self.fc1(o))
-        o = F.relu(self.fc2(o))
-        o = self.fc3(o)
-        return o
+        # Flatten the input
+        x = x.view(x.size(0), -1)
+        # Pass through all layers
+        return self.encoder_net(x)
 
 class Decoder(nn.Module):
-    def __init__(self, latent_dim: int = 32, hidden_dims: List[int] = [256, 512], output_dim: int = 784) -> None:
+    def __init__(self, latent_dim: int = 32, hidden_dims: List[int] = [256, 512], output_dim: int = 784, image_shape: Tuple[int, int, int] = (1, 28, 28)) -> None:
         super().__init__()
         
-        # TODO: Implement the decoder layers here
-        # You should create layers to process the latent vector
-        # and reconstruct the original input
-        self.fc1 = nn.Linear(latent_dim, hidden_dims[0])
-        self.fc2 = nn.Linear(hidden_dims[0], hidden_dims[1])
-        self.fc3 = nn.Linear(hidden_dims[1], output_dim)
+        # Create a dynamic list of layers based on hidden_dims
+        layers = []
+        input_size = latent_dim
+        
+        # Add all hidden layers
+        for hidden_size in hidden_dims:
+            layers.append(nn.Linear(input_size, hidden_size))
+            layers.append(nn.ReLU())
+            input_size = hidden_size
+            
+        # Add final output layer with sigmoid activation
+        layers.append(nn.Linear(input_size, output_dim))
+        layers.append(nn.Sigmoid())
+        
+        # Create sequential model with all layers
+        self.decoder_net = nn.Sequential(*layers)
+        
+        # Store output shape for reshaping in forward pass
+        self.output_dim = output_dim
+        self.image_shape = image_shape
         
     def forward(self, z: torch.Tensor) -> torch.Tensor:
-        # TODO: Implement the forward pass
-        # Remember to reshape the output to match the original image dimensions
-        o = F.relu(self.fc1(z))
-        o = F.relu(self.fc2(o))
-        o = torch.sigmoid(self.fc3(o))
-        return o.view(-1, 1, 28, 28) # hardcoded for MNIST
+        # Pass through all layers
+        output = self.decoder_net(z)
+        # Reshape output to match original image dimensions
+        return output.view(output.size(0), *self.image_shape)
 
 class Autoencoder(nn.Module):
-    def __init__(self, input_dim: int = 784, hidden_dims: List[int] = [512, 256], latent_dim: int = 32) -> None:
+    def __init__(self, input_dim: int = 784, hidden_dims: List[int] = [512, 256], latent_dim: int = 32, image_shape: Tuple[int, int, int] = (1, 28, 28)) -> None:
         super().__init__()
         
-        # TODO: Create the encoder and decoder components
+        # Use the same hidden dimensions structure for encoder and decoder (reversed)
         rev_hidden_dims = hidden_dims[::-1]
-        self.encoder: Optional[Encoder] = Encoder(input_dim, hidden_dims, latent_dim)  # Replace with your encoder
-        self.decoder: Optional[Decoder] = Decoder(latent_dim, rev_hidden_dims, input_dim)  # Replace with your decoder
+        self.encoder: Optional[Encoder] = Encoder(input_dim, hidden_dims, latent_dim)
+        self.decoder: Optional[Decoder] = Decoder(latent_dim, rev_hidden_dims, input_dim, image_shape)
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # TODO: Implement the full autoencoder forward pass
-        # 1. Encode the input
-        # 2. Decode the latent representation
         z = self.encoder(x)
         reconstructed = self.decoder(z)
         
-        return reconstructed  # Replace with the reconstruction
+        return reconstructed
     
     def encode(self, x: torch.Tensor) -> torch.Tensor:
-        # TODO: Implement encoding only
         return self.encoder(x)
     
     def decode(self, z: torch.Tensor) -> torch.Tensor:
-        # TODO: Implement decoding only
         return self.decoder(z)

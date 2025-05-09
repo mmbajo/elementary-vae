@@ -42,13 +42,19 @@ def main() -> None:
     # Parse hidden dimensions
     hidden_dims: List[int] = [int(dim) for dim in args.hidden_dims.split(",")]
     
+    # Get image dimensions from the dataset
+    sample_batch, _ = next(iter(train_loader))
+    image_shape = tuple(sample_batch.shape[1:])  # (channels, height, width)
+    input_dim = sample_batch[0].numel()  # total number of elements in a single image
+    
     # Create model
     model = Autoencoder(
-        input_dim=28*28,  # MNIST image size
+        input_dim=input_dim,  # calculated from image dimensions
         hidden_dims=hidden_dims,
-        latent_dim=args.latent_dim
+        latent_dim=args.latent_dim,
+        image_shape=image_shape
     ).to(device)
-    print(f"Created autoencoder with architecture: {hidden_dims}, latent_dim={args.latent_dim}")
+    print(f"Created autoencoder with architecture: {hidden_dims}, latent_dim={args.latent_dim}, input_dim={input_dim}, image_shape={image_shape}")
     
     # Create optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
