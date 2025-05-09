@@ -13,12 +13,18 @@ from elementary_vae.utils import plot_reconstruction, plot_latent_space
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train a VAE on MNIST")
     parser.add_argument("--batch-size", type=int, default=128, help="Batch size for training")
-    parser.add_argument("--epochs", type=int, default=20, help="Number of epochs to train")
+    parser.add_argument("--epochs", type=int, default=50, help="Number of epochs to train")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     parser.add_argument("--latent-dim", type=int, default=32, help="Dimension of latent space")
     parser.add_argument("--hidden-dims", type=str, default="512,256", help="Hidden dimensions, comma separated")
-    parser.add_argument("--kl-weight", type=float, default=1.0, help="Weight for KL divergence term")
+    parser.add_argument("--kl-weight", type=float, default=0.1, help="Maximum weight for KL divergence term")
+    parser.add_argument("--use-kl-annealing", action="store_true", help="Whether to use KL annealing")
+    parser.add_argument("--no-kl-annealing", dest="use_kl_annealing", action="store_false", help="Do not use KL annealing")
+    parser.add_argument("--kl-anneal-cycles", type=int, default=3, help="Number of KL annealing cycles")
     parser.add_argument("--save-dir", type=str, default="./results/vae", help="Directory to save results")
+    
+    # Set default for KL annealing
+    parser.set_defaults(use_kl_annealing=True)
     
     return parser.parse_args()
 
@@ -66,11 +72,18 @@ def main() -> None:
         optimizer=optimizer,
         device=device,
         checkpoint_dir=os.path.join(args.save_dir, "checkpoints"),
-        kl_weight=args.kl_weight
+        kl_weight=args.kl_weight,
+        use_kl_annealing=args.use_kl_annealing,
+        kl_anneal_cycles=args.kl_anneal_cycles
     )
     
     # Train model
-    print(f"Starting training for {args.epochs} epochs with KL weight {args.kl_weight}")
+    print(f"Starting training for {args.epochs} epochs with max KL weight {args.kl_weight}")
+    if args.use_kl_annealing:
+        print(f"Using KL annealing with {args.kl_anneal_cycles} cycles")
+    else:
+        print(f"Not using KL annealing, fixed KL weight: {args.kl_weight}")
+    
     train_losses, val_losses = trainer.train(
         train_loader=train_loader,
         val_loader=val_loader,

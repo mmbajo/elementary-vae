@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import math
 from typing import List, Tuple, Optional, Union
 
 class VAEEncoder(nn.Module):
@@ -13,12 +14,25 @@ class VAEEncoder(nn.Module):
         
         # Add all hidden layers
         for hidden_size in hidden_dims:
-            self.hidden_layers.append(nn.Linear(input_size, hidden_size))
+            linear = nn.Linear(input_size, hidden_size)
+            # Initialize weights with Xavier/Glorot initialization
+            nn.init.xavier_normal_(linear.weight)
+            nn.init.zeros_(linear.bias)
+            self.hidden_layers.append(linear)
             input_size = hidden_size
             
         # Output layers for mu and logvar
         self.mu_layer = nn.Linear(input_size, latent_dim)
         self.logvar_layer = nn.Linear(input_size, latent_dim)
+        
+        # Initialize mu layer
+        nn.init.xavier_normal_(self.mu_layer.weight, gain=0.01)
+        nn.init.zeros_(self.mu_layer.bias)
+        
+        # Initialize logvar layer with small values to prevent initial KL from being too large
+        nn.init.xavier_normal_(self.logvar_layer.weight, gain=0.01)
+        nn.init.constant_(self.logvar_layer.bias, -5)  # Start with small variance
+        
         self.relu = nn.ReLU()
         
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -31,7 +45,8 @@ class VAEEncoder(nn.Module):
             
         # Get mu and logvar
         mu = self.mu_layer(x)
-        logvar = self.logvar_layer(x)
+        # Clamp logvar to prevent numerical instability
+        logvar = torch.clamp(self.logvar_layer(x), min=-10.0, max=10.0)
         
         return mu, logvar
 
@@ -45,11 +60,18 @@ class VAEDecoder(nn.Module):
         
         # Add all hidden layers
         for hidden_size in hidden_dims:
-            self.hidden_layers.append(nn.Linear(input_size, hidden_size))
+            linear = nn.Linear(input_size, hidden_size)
+            # Initialize weights with Xavier/Glorot initialization
+            nn.init.xavier_normal_(linear.weight)
+            nn.init.zeros_(linear.bias)
+            self.hidden_layers.append(linear)
             input_size = hidden_size
             
         # Output layer
         self.output_layer = nn.Linear(input_size, output_dim)
+        nn.init.xavier_normal_(self.output_layer.weight)
+        nn.init.zeros_(self.output_layer.bias)
+        
         self.relu = nn.ReLU()
         
         # Store output dimensions for reshaping
@@ -79,10 +101,15 @@ class VAE(nn.Module):
         self.latent_dim: int = latent_dim
         
     def reparameterize(self, mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
-        # Implement the reparameterization trick
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std) # sample from standard normal
-        return mu + eps * std
+        """Reparameterization trick: z = mu + std * eps"""
+        if self.training:
+            # Sample from standard normal 
+            std = torch.exp(0.5 * logvar)
+            eps = torch.randn_like(std)
+            return mu + eps * std
+        else:
+            # During inference, just use the mean
+            return mu
         
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         mu, logvar = self.encoder(x)

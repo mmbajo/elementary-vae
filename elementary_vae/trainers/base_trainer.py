@@ -39,18 +39,22 @@ class BaseTrainer:
         val_losses: List[float] = []
         
         for epoch in range(num_epochs):
+            # Training step
             train_loss = self.train_epoch(train_loader)
             train_losses.append(train_loss)
             
+            # Validation step
             val_loss = self.validate(val_loader)
             val_losses.append(val_loss)
             
             print(f"Epoch {epoch+1}/{num_epochs} - Train Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f}")
             
+            # Save best model
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 self.save_checkpoint(f"best_model.pt")
             
+            # Save checkpoint periodically
             if (epoch + 1) % save_interval == 0:
                 self.save_checkpoint(f"epoch_{epoch+1}.pt")
         
