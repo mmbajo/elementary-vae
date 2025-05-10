@@ -53,9 +53,14 @@ def parse_args() -> argparse.Namespace:
         default="./results/vae",
         help="Directory to save results",
     )
+    parser.add_argument(
+        "--plot-3d",
+        action="store_true",
+        help="Plot latent space in 3D (default is 2D)",
+    )
 
     # Set default for KL annealing
-    parser.set_defaults(use_kl_annealing=True)
+    parser.set_defaults(use_kl_annealing=True, plot_3d=True)
 
     return parser.parse_args()
 
@@ -138,14 +143,19 @@ def main() -> None:
     fig = plot_reconstruction(inputs, reconstructions)
     fig.savefig(os.path.join(args.save_dir, "reconstructions.png"))
 
-    # Plot latent space (only for 2D latent space)
-    if args.latent_dim == 2:
-        fig = plot_latent_space(model, test_loader, device)
-        fig.savefig(os.path.join(args.save_dir, "latent_space.png"))
+    # Plot latent space using PCA if dimension > 3 (for 3D visualization) or > 2 (for 2D visualization)
+    if args.plot_3d:
+        if args.latent_dim > 3:
+            print(f"Using PCA to reduce latent space from {args.latent_dim}D to 3D for visualization")
+        latent_plot_filename = "latent_space_3d.png"
     else:
-        print(
-            f"Latent space visualization only available for 2D latent space (current: {args.latent_dim}D)"
-        )
+        if args.latent_dim > 2:
+            print(f"Using PCA to reduce latent space from {args.latent_dim}D to 2D for visualization")
+        latent_plot_filename = "latent_space_2d.png"
+    
+    # Plot latent space
+    fig = plot_latent_space(model, test_loader, device, plot_3d=args.plot_3d)
+    fig.savefig(os.path.join(args.save_dir, latent_plot_filename), dpi=300, bbox_inches='tight')
 
     # Generate samples from random points in latent space
     n_samples: int = 10
